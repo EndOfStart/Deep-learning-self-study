@@ -429,4 +429,9 @@ X_train_fs = select.fit(X_train, y_train).trainform(X_train)
 
 mask = select.get_support()
 
-# 주피터 노트북 chapter15_MachineLearning3(pipeline).ipynb 파일 보기
+# 주피터 노트북 chapter15_MachineLearning3(pipeline).ipynb 파일 보기 ------------------
+
+# Seaborn countplot --------------------------------------------------------------
+집계, plot을 동시에 해줌 
+
+# DataFrame Series.plot 메서드를 이용한 데이터 시각화 ---------------------------------
