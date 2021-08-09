@@ -10,6 +10,7 @@ Pandsas, Series와 DataFrame / 범주형 데이터 변환 / 비대칭 데이터 
 데이터 검증, panda DataFrame groupby/sample 함수 / Conv1D, Conv2D, Conv3D
 
 tensorflow 모델 저장 및 불러오기 / Git과 Github의 차이점 & 용어 정리
+지도학습 선형회귀의 개선 모델 Ridge와 Lasso / 
 
 
 sklearn module
@@ -429,9 +430,247 @@ X_train_fs = select.fit(X_train, y_train).trainform(X_train)
 
 mask = select.get_support()
 
-# 주피터 노트북 chapter15_MachineLearning3(pipeline).ipynb 파일 보기 ------------------
 
-# Seaborn countplot --------------------------------------------------------------
-집계, plot을 동시에 해줌 
+# 지도학습 선형회귀의 개선 모델 Ridge와 Lasso ----------------------------------------
+선형회귀에서는 MSE, RMSE, MAE 등을 최소화하는 기울기(w), 절편(b)를 찾음
 
-# DataFrame Series.plot 메서드를 이용한 데이터 시각화 ---------------------------------
+Ridge와 Lasso는 오차값에 규제(Regulation) 항 또는 벌점(Penalty) 항을 추가하여,
+조금 더 단순화시킨 모델 또는 일반화시킨 모델을 만드는 방법이다.
+
+이러한 모델은 Training Set에서 Overfitting을 줄이고 Test Set에서 성능을 높인다.
+
+손실함수에서 각 모델은 각각 alpha와 w의 제곱항, 절대값을 추가한다. 이때, 이것을 규제라고 한다.
+그리고 alpha는 규제의 강도를 의미한다.
+Ridge는 '+a * (w^2)' - 규제
+Lasso는 '+a * |w|' - 규제
+
+두 모델 중 보통을 Ridge 회귀를 선호하지만 특성이 많고 그 중 일부분만 중요하다면 Lasso가 더 좋을 선택일 수 있다.
+scikit-learn은 Lasso와 Ridge의 패널티를 결합한 ElasticNet도 제공한다.
+실제로 이 조합은 최상의 성능을 내지만 L1규제와 L2규제를 위한 매개변수 두개를 조정해야한다.
+
+** 참고 사이트 **
+https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=ssdyka&logNo=221232820330
+
+
+# Optuna 모듈 ---------------------------------------------------------------
+import optuna
+from optuna import Trial 
+from optuna.samplers import TPESampler # 보통 공부할 때 많이 불러오는 모듈
+
+Optuna는 하이퍼 파라미터 최적화 Task를 도와주는 Framework임
+파라미터의 범위를 지정해주거나, 파라미터가 될 수 있는 목록을 설정하면 매 Trial마다 
+파라미터를 변경하면서 최적의 파라미터를 찾음
+
+** 참고 사이트 ** 
+https://ssoonidev.tistory.com/107
+
+# Pycaret 모듈 ---------------------------------------------------------------
+setup() 메서드 
+
+아래와 같은 방법으로 모델 생성 전 값을 초기화하는 부분임
+reg = setup(X_train, 
+            preprocess = False, # True로 설정되면, 자체적인 Feature Engineering을 추가로 진행해 Predict가 불가능해진다.
+            train_size = 0.999,  # 우리는 전체 데이터를 학습해 test를 예측하는게 목표이기 때문에, 0.999로 설정한다.
+            target = '등록차량수', # 목표 변수는 등록 차량 수 이다.
+            silent = True, # 엔터를 누르기 귀찮다. 궁금하면 풀어보세요
+            use_gpu = True, # GPU가 있으면 사용하세요 (Cat BOost 속도 향상)
+            numeric_features=list(X_train.drop(columns = ['등록차량수']).columns), # 모든 변수가 숫자로써의 의미가 있다.
+            session_id = 2021,
+            fold_shuffle = True
+            )
+
+compare_model() 메서드
+
+아래와 같은 방법으로 간단하게 사용하는 것부터 참조 사이트처럼 여러가지를 설정할 수 있다.
+top5 = compare_models(n_select = 5, sort = 'MAE') 
+
+** 참고 사이트 **
+https://leo-bb.tistory.com/62
+
+# pandas DataFrame assign 메서드 --------------------------------------
+import pandas as pd
+
+df = pd.DataFrame( {'Cost_Price': [100, 200], 
+					'Selling_Price': [200, 400]} )
+
+하나의 열 추가
+new_df=df.assign( Profit=df["Selling Price"]-df["Cost Price"] )
+new_df=df.assign( Profit=lambda x: x.Selling_Price-x.Cost_Price )
+
+여러 개의 열 추가
+new_df=df.assign( Cost_Price_Euro = df['Cost_Price']*1.11,  
+                  Selling_Price_Euro = df['Selling_Price']*1.11 )
+				  
+** 참고 사이트 ** 
+https://www.delftstack.com/ko/api/python-pandas/pandas-dataframe-dataframe.assign-function/
+
+# pandas DataFrame pivot 메서드 --------------------------------------
+Method Default Form
+df.pivot(index=None, columns=None, values=None) 
+
+일반적으로 사용할 때 groupby를 사용한 상태에서 쓰임
+그러나 groupby를 사용하지 않고 쓰는 방법도 있음(이때는 pivot_table 메서드를 사용)
+df.pivot(index='단지코드', columns='임대건물구분', values='counter')
+
+** 참고 사이트 **
+https://continuous-development.tistory.com/142
+
+# pandas DataFrame rename 메서드 --------------------------------------
+
+columns= dictionary 형태로 넣어줘야함
+df.rename( columns={'바꿀 기존 Column':'Rename할 Column Name', 
+					'바꿀 기존 Column2':'Rename할 Column Name2'} )
+
+
+# K-Fold와 Statified K-Fold 모듈 --------------------------------------
+
+train(학습) 데이터에서만 정확도가 높게 나오거나 손실함수 값이 낮게 나오는 것을 과정합(Overfitting)이라고 한다.
+이때 과적합을 방지하기 위해 분류 모델에서 k-fold 모듈을 사용한다. (회귀 모델에서는 찾아봐야한다.)
+
+k-fold 모듈을 사용하는 것은 곧 교차검증을 하는 것과 같다.
+(교차검증이 무엇인지, 자세한 궁금증은 참고 사이트를 확인하자)
+
+그러나 k-fold의 문제점이 있다.
+k-fold는 일정한 간격으로 잘라서 학습하고 검증하기 때문에 편향된 데이터에서는
+학습 데이터는 없고 검증 데이터에만 있는 문제가 발생한다. 
+
+이를 방지하기 위해 나온 것이 statifiedkfold 모듈이다.
+이 모듈은 분류 모델에서 학습 데이터와 target 데이터를 일정한 비율(k등분)로 가져가기 때문에
+학습과 검증 데이터가 편향된 데이터를 갖지 않는다. 
+
+target 데이터의 값을 보고 일정한 비율로 가져가기 때문에 target이 연속된 데이터인
+Regression(회귀[예측]) 모델에서는 사용하는 것이 적절하지 않다.
+
+굳이 회귀 모델에서 사용하자면 target 데이터를 n등분하여 수치형 catergory로 만들어서 사용할 수 있다.
+
+statifiedkfold를 k등분하여 학습할 때 k만큼의 결과 값이 나온다.
+예로, k=5로 나눴을 때 정확도, Loss 등이 5개가 나온다는 의미이다.
+
+** 참고 사이트 **
+https://continuous-development.tistory.com/166
+
+# Scaler QuantileTransformer와 PowerTransformer -----------------------------------------
+- QuantileTransformer -
+기본적으로 1000개 분위를 사용하여 데이터를 '균등분포' 시킴
+Robust처럼 이상치에 민감X, 0~1사이로 압축
+
+from sklearn.preprocessing import QuantileTransformer
+scaler = QuantileTransformer()
+
+
+- PowerTransformer -
+데이터의 특성별로 정규분포형태에 가깝도록 변환
+관련 교재에서 히스토그램을 그려서 확인 꼭 해보는게 좋다고 함 
+
+from sklearn.preprocessing import PowerTransformer
+scaler = PowerTransformer()
+
+
+** 참고 사이트 **
+https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=demian7607&logNo=222009975984
+
+
+# pandas crosstab -----------------------------------------
+파라미터 사용법 익혀보기
+
+
+## 자연어처리 
+# gensim --------------------------------------------------
+단어 단위로 분석할 때 사용
+문석, 단어, tfidm 구축할 때
+
+# pytorch 모듈 ---------------------------------------------
+텐서플로우는 그래프 기반이다. 내부에서 돌기 때문에 확인이 힘들다.
+반면, 중단점을 찍을 수 있어 문제 파악을 하기 쉽다. 때문에 디버깅하기 좋다
+
+# pytorch-lightning ------------------------------------
+keras 격의 모듈 - 편리하다
+
+# transformer 모듈 ------------------------------------------
+
+# LDA ------------------------------------------------------
+회의에서 사용한 단어를 모아 TOPIC 리스트를 보여줌(?) - 좀 더 알아보기
+
+# 분류성능평가지표 ---------------------------------------------
+
+** 참고 사이트 ** 
+https://sumniya.tistory.com/26
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
